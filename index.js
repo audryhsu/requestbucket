@@ -5,14 +5,52 @@ require('dotenv').config();
 const cors = require('cors');
 const mongoose = require('mongoose')
 const morgan = require('morgan');
+const PgSidekick = require("./utils/pg-sidekick")
+const pg = new PgSidekick()
+const Request = require('./models/request')
 
 app.use(cors());
 app.use(express.static('build'));
 app.use(express.json())
 app.use(morgan('dev'))
 
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {
+        console.log('connected to MongoDB');
+    })
+    .catch((error) => {
+        console.error('error connecting to MongoDB:', error.message);
+    });
+
 // - Home page
 app.get('/', (req, res) => {
+
+  // test object for MongoDB data 
+  // DELETE CODE BELOW AFTER TESTING
+  const testRequest = {
+    headers: {
+      'content-type': 'json',
+    },
+    payload: {
+      'data': 'some data'
+    },
+    rawbody: 'asdfa;sldkfjasd'
+  }
+  const request = new Request(testRequest)
+  
+  ;(async function () {
+    const buckets = await pg.loadBuckets()
+    console.log(buckets)
+    console.log('------------------------------');
+    
+    const returnedRequest = await request.save()
+    console.log("returned request", returnedRequest);
+    console.log('------------------------------');
+    const requests = await Request.find({})
+    console.log(requests)
+  })()
+  // DELETE CODE ABOVE AFTER TESTING
+
   // return the home page with "create bin button"
   // create bin button sends POST to /create route
 })
