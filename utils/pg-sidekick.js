@@ -12,7 +12,6 @@ module.exports = class PgSidekick {
   async addBucket(url) {
     const ADD_BUCKET = `INSERT INTO buckets (url) VALUES ('${url}')`;
     await dbQuery(ADD_BUCKET);
-    console.log('done')
     return true;
   }
 
