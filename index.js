@@ -14,6 +14,7 @@ const Request = require('./models/request')
 app.use(cors());
 app.use(express.static('build'));
 app.use(express.json())
+app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
 app.use(morgan('dev'))
 
 mongoose.connect(process.env.MONGODB_URI)
@@ -52,7 +53,42 @@ app.get('/create/:bucketUrl', (req, res) => {
 
 // - Bucket "page" that collects all incoming
 app.all(`/:bucketUrl`, (req, res) => {
-  // inspect http req
+  const bucketUrl = req.params.bucketUrl
+  const header = req.headers
+  const requestType = req.method
+  const body = req.body
+
+  // TODO: validate if bucketURL exists in database
+  // if not, return an helpful error to user  
+
+  const requestObj = new Request({
+    headers: header,
+    payload: body
+  })
+  // let countRequests; TODO
+  
+  ;(async function () {
+    try {
+      const bucketRequests = await pg.loadRequests(bucketUrl)
+      countRequests = bucketRequests.length
+      const bucketId = bucketRequests[0]['bucket_id']
+
+      // Write to MongoDB
+      const savedRequest = await requestObj.save()
+      const mongoId = savedRequest._id
+
+      const newRequest = await pg.createRequest(bucketId, requestType, mongoId)
+
+    } catch (error) {
+      console.error(error);
+    }
+  })() 
+  // TODO: 
+  // if (countRequests >= 20) {
+  //   // delete oldest request from bucket
+  // }
+
+  res.send('200')
 })
 
 // app.get('/:bucketUrl', (req, res) => {

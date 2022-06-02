@@ -15,24 +15,18 @@ module.exports = class PgSidekick {
     return true;
   }
 
-  /*
-INSERT INTO buckets (url) VALUES 
-  ('http://example.com'),
-  ('google.com'),
-  ('askjeeves.com')
-;
-  */
-  // async loadNotes() {
-  //   const LOAD_NOTES = "SELECT * FROM notes"
+  async loadRequests(bucketUrl) {
+    // returns all requests for given bucketUrl
+    const LOAD_REQUESTS = `SELECT * FROM requests WHERE bucket_id =(SELECT id FROM buckets WHERE url=('${bucketUrl}'))`;
+   
+    let requests = await dbQuery(LOAD_REQUESTS)
+    return requests.rows
+  }
 
-  //   let notes = dbQuery(LOAD_NOTES)
-  //   return notes;
-  // }
+  async createRequest(bucketId, requestType, mongoId) {
+    const INSERT_REQUEST = `INSERT INTO requests (bucket_id, request_type, mongo_document_ref) VALUES ('${bucketId}', '${requestType}', '${mongoId}')`;
 
-  // async createNote(content) {
-  //   const CREATE_NOTE = "INSERT INTO notes (content) VALUES ($1)";
-
-  //   let result = await dbQuery(CREATE_NOTE, content);
-  //   return !!result;
-  // }
+    let newRequest = await dbQuery(INSERT_REQUEST)
+    return newRequest
+  }
 }
