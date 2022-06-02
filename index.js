@@ -1,9 +1,10 @@
 const express = require("express");
 const app = express();
 require('dotenv').config();
+const path = require('path');
 const PORT = process.env.PORT;
 const cors = require('cors');
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 const morgan = require('morgan');
 const PgSidekick = require("./utils/pg-sidekick")
 const { urlGenerator } = require("./services/url-generator");
@@ -25,8 +26,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // - Home page
 app.get('/', (req, res) => {
-  // return the home page with "create bin button"
-  // create bin button sends POST to /create route
+  res.sendFile(path.join(__dirname+'/static/home.html'));
 })
 
 app.post('/create', (req, res) => {
