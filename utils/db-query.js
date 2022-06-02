@@ -12,7 +12,7 @@ const logQuery = (statement, parameters) => {
 
 const CONNECTION = {
   connectionString: config.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: false,
 };
 
 module.exports = {

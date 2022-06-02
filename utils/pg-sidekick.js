@@ -9,6 +9,20 @@ module.exports = class PgSidekick {
     return buckets.rows
   }
   
+  async addBucket(url) {
+    const ADD_BUCKET = `INSERT INTO buckets (url) VALUES (${url})`;
+    await dbQuery(ADD_BUCKET);
+    console.log('done')
+    return true;
+  }
+
+  /*
+INSERT INTO buckets (url) VALUES 
+  ('http://example.com'),
+  ('google.com'),
+  ('askjeeves.com')
+;
+  */
   // async loadNotes() {
   //   const LOAD_NOTES = "SELECT * FROM notes"
 

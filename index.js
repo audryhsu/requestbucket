@@ -1,11 +1,12 @@
 const express = require("express");
-const PORT = 3000;
 const app = express();
 require('dotenv').config();
+const PORT = process.env.PORT;
 const cors = require('cors');
 const mongoose = require('mongoose')
 const morgan = require('morgan');
 const PgSidekick = require("./utils/pg-sidekick")
+const { urlGenerator } = require("./services/url-generator");
 const pg = new PgSidekick()
 const Request = require('./models/request')
 
@@ -57,8 +58,15 @@ app.get('/', (req, res) => {
 
 app.post('/create', (req, res) => {
  // creates a new bin and returns page with new bin url (passing through mongo reference id in the url)
-})
+  let newUrl = urlGenerator();
 
+  ;(async function () {
+    // add to postgres db
+    pg.addBucket(newUrl);
+    // direct to 'created' page
+    res.redirect(`/create/${newUrl}`)
+  })()
+})
 
 // - View Created page
 app.get('/create/:binUrl', (req, res) => {
