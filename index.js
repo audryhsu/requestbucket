@@ -34,12 +34,16 @@ app.post('/create', (req, res) => {
  // creates a new bucket and returns page with new bucket url
   let newUrl = urlGenerator();
 
-  ;(async function () {
-    // add to postgres db
-    pg.addBucket(newUrl);
-    // direct to 'created' page
-    res.redirect(`/create/${newUrl}`)
-  })()
+  try {
+    ;(async function () {
+      // add to postgres db
+      pg.addBucket(newUrl);
+      // direct to 'created' page
+      res.redirect(`/create/${newUrl}`)
+    })()
+  } catch (error) {
+    console.error(error)
+  }
 })
 
 // - View Created page
@@ -71,7 +75,7 @@ app.all(`/:bucketUrl`, (req, res) => {
     try {
       const bucketRequests = await pg.loadRequests(bucketUrl)
       countRequests = bucketRequests.length
-      const bucketId = bucketRequests[0]['bucket_id']
+      const bucketId = await pg.getBucketId(bucketUrl);
 
       // Write to MongoDB
       const savedRequest = await requestObj.save()

@@ -23,6 +23,14 @@ module.exports = class PgSidekick {
     return requests.rows
   }
 
+  async getBucketId(bucketUrl) {
+    // returns the pg id for the specified bucket url
+    const LOAD_BUCKET = `SELECT id FROM buckets WHERE url='${bucketUrl}'`
+
+    let bucket = await dbQuery(LOAD_BUCKET)
+    return bucket.rows[0].id;
+  }
+  
   async createRequest(bucketId, requestType, mongoId) {
     const INSERT_REQUEST = `INSERT INTO requests (bucket_id, request_type, mongo_document_ref) VALUES ('${bucketId}', '${requestType}', '${mongoId}')`;
 
