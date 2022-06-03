@@ -8,8 +8,12 @@ const mongoose = require('mongoose');
 const morgan = require('morgan');
 const PgSidekick = require("./utils/pg-sidekick")
 const { urlGenerator } = require("./services/url-generator");
+const { sortRequests } =  require("./services/sortFunction");
+
 const pg = new PgSidekick()
 const Request = require('./models/request')
+
+const MAX_REQUESTS_PER_BIN = 20
 
 app.use(cors());
 app.use(express.static('build'));
@@ -62,48 +66,80 @@ app.all(`/:bucketUrl`, (req, res) => {
   const requestType = req.method
   const body = req.body
 
-  // TODO: validate if bucketURL exists in database
-  // if not, return an helpful error to user  
-
-  const requestObj = new Request({
-    headers: header,
-    payload: body
-  })
-  // let countRequests; TODO
-  
   ;(async function () {
     try {
-      const bucketRequests = await pg.loadRequests(bucketUrl)
-      countRequests = bucketRequests.length
       const bucketId = await pg.getBucketId(bucketUrl);
 
-      // Write to MongoDB
-      const savedRequest = await requestObj.save()
-      const mongoId = savedRequest._id
+      if (!bucketId) {
+        return res.status(404).send('Bucket Url not found')
+      } else {
 
-      const newRequest = await pg.createRequest(bucketId, requestType, mongoId)
+        const bucketRequests = await pg.loadRequests(bucketUrl)
+        const countRequests = bucketRequests.length
+
+        // Delete oldest request from bucket
+        if (countRequests >= MAX_REQUESTS_PER_BIN) {
+          bucketRequests.sort(sortRequests)
+          const oldestId = bucketRequests[0]['id']
+
+          await pg.deleteRequest(oldestId);
+        }
+
+        // Write to MongoDB & Postgres
+        const requestObj = new Request({
+          headers: header,
+          payload: body
+        })
+        
+        const savedRequest = await requestObj.save()
+        await pg.createRequest(bucketId, requestType, savedRequest._id)
+      
+        res.send('200')
+      }
 
     } catch (error) {
       console.error(error);
     }
   })() 
-  // TODO: 
-  // if (countRequests >= 20) {
-  //   // delete oldest request from bucket
-  // }
 
-  res.send('200')
+})
+
+// - Bin History page
+app.get('/history/:bucketUrl', (req, res) => {
+  const bucketUrl = req.params.bucketUrl
+  
+  ;(async function () {
+    try {
+      const bucketId = await pg.getBucketId(bucketUrl);
+
+      if (!bucketId) {
+        return res.status(404).send('Bucket Url not found')
+      } else {
+
+        const bucketRequests = await pg.loadRequests(bucketUrl)
+        const mongoIds = bucketRequests.map(req => req['mongo_document_ref'])
+
+        if (mongoIds.length == 0) {
+          return res.send(`No requests in bucket ${bucketUrl}`)
+        }
+        
+        const data = await Request.find({
+          '_id': {$in: mongoIds}
+        });
+
+        return res.json(data)
+      }
+
+    } catch (error) {
+      console.error(error);
+    }
+  })() 
+  
 })
 
 // app.get('/:bucketUrl', (req, res) => {
 //   // display ok/bucket history
 // })
-
-// - Bin History page
-app.get('/history/:bucketUrl', (req, res) => {
-  // pull data for this bucketUrl to provide for the React template
-})
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
