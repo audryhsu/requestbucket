@@ -16,7 +16,7 @@ const Request = require('./models/request')
 const MAX_REQUESTS_PER_BIN = 20
 
 app.use(cors());
-app.use(express.static('build'));
+app.use(express.static(path.join(__dirname, 'build')));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
 app.use(morgan('dev'))
@@ -43,7 +43,7 @@ app.post('/create', (req, res) => {
       // add to postgres db
       pg.addBucket(newUrl);
       // direct to 'created' page
-      res.redirect(`/create/${newUrl}`)
+      res.send(newUrl);
     })()
   } catch (error) {
     console.error(error)
@@ -51,13 +51,13 @@ app.post('/create', (req, res) => {
 })
 
 // - View Created page
-app.get('/create/:bucketUrl', (req, res) => {
-  // displays page with new bin url
-  let host = req.get('host');
-  let url = `${host}/${req.params.bucketUrl}`;
-  // button to view bin history
-  res.send(url);
-})
+// app.get('/create/:bucketUrl', (req, res) => {
+//   // displays page with new bin url
+//   let host = req.get('host');
+//   let url = `${host}/${req.params.bucketUrl}`;
+//   // button to view bin history
+//   res.send(url);
+// })
 
 // - Bucket "page" that collects all incoming
 app.all(`/:bucketUrl`, (req, res) => {
@@ -106,7 +106,7 @@ app.all(`/:bucketUrl`, (req, res) => {
 })
 
 // - Bin History page
-app.get('/history/:bucketUrl', (req, res) => {
+app.get('/stash/:bucketUrl', (req, res) => {
   const bucketUrl = req.params.bucketUrl
   
   ;(async function () {
@@ -138,6 +138,9 @@ app.get('/history/:bucketUrl', (req, res) => {
   
 })
 
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname+'/build/index.html'))
+})
 // app.get('/:bucketUrl', (req, res) => {
 //   // display ok/bucket history
 // })
