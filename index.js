@@ -88,7 +88,8 @@ app.all(`/:bucketUrl`, (req, res) => {
         // Write to MongoDB & Postgres
         const requestObj = new Request({
           headers: header,
-          payload: body
+          payload: body,
+          requestType: requestType
         })
         
         const savedRequest = await requestObj.save()
