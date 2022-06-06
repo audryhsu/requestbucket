@@ -55,8 +55,6 @@ io.on('connection', (socket) => {
 // - Home page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname+'/static/home.html'));
-  res.status(200)
-
 })
 
 app.post('/create', (req, res) => {
@@ -106,7 +104,7 @@ app.all(`/:bucketUrl`, (req, res) => {
         const savedRequest = await requestObj.save()
         await pg.createRequest(bucketId, method, savedRequest._id)
 
-        // Send new request data to connected sockets
+        // Emit new request data to connected sockets
         req.io.emit("NEW_REQUEST_IN_BUCKET", {
           bucketUrl: bucketUrl,
           data: savedRequest
