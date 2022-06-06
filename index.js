@@ -13,7 +13,7 @@ const { sortRequests } =  require("./services/sortFunction");
 const Request = require('./models/request')
 const MAX_REQUESTS_PER_BIN = 20
 
-// IMPORT SOCKET IO
+// IO is a server engine instance that manages Sockets 
 const { createServer } = require("http");
 const httpServer = createServer(app)
 const { Server } = require("socket.io");
@@ -31,6 +31,12 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(morgan('dev'))
 
+// Add middleware so that all routes have access to io server
+app.use((req, res, next) => {
+  req.io = io;
+  return next();
+});
+
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => {
         console.log('connected to MongoDB');
@@ -39,29 +45,17 @@ mongoose.connect(process.env.MONGODB_URI)
         console.error('error connecting to MongoDB:', error.message);
     });
 
-// Websocket server listens for connection event for incoming sockets 
+// Server listens for connection events from incoming sockets 
 io.on('connection', (socket) => {
-  const transport = socket.conn.transport.name; // in most cases, "polling"
-  console.log('initial transport: ', transport)
-  socket.conn.on("upgrade", () => {
-    const upgradedTransport = socket.conn.transport.name; // in most cases, "websocket"
-    console.log('------UPGRADED transport------', upgradedTransport)
-  });
-
-  console.log(`--------user connected: ${socket.id}`);
-
-  socket.on('send_message', (data) => {
-    console.log('got a message!')
-    socket.broadcast.emit("receive_message", data)
-  })
-
+  // initial connections always HTTP polling
+  // upgraded to websocket protocol if handshake successful
+  console.log(`--------user connected: ${socket.id} via: ${socket.conn.transport.name}`); 
 });
 
 // - Home page
 app.get('/', (req, res) => {
   // res.sendFile(path.join(__dirname+'/static/home.html'));
-  
-  res.json({'body': 'helloworld'}) // TESTING ONLY
+  res.status(200)
 
 })
 
@@ -71,30 +65,25 @@ app.post('/create', (req, res) => {
 
   try {
     ;(async function () {
-      // add to postgres db
-      pg.addBucket(newUrl);
-      // direct to 'created' page
-      res.send(newUrl);
+      pg.addBucket(newUrl); // add to postgres db
+      res.send(newUrl); // direct to 'created' page
     })()
   } catch (error) {
     console.error(error)
   }
 })
 
-
-// - Bucket "page" that collects all incoming
+// - Bucket "page" that collects all incoming requests
 app.all(`/:bucketUrl`, (req, res) => {
   const bucketUrl = req.params.bucketUrl
-  const header = req.headers
-  const requestType = req.method
-  const body = req.body
+  const {headers, method, body } = req
 
   ;(async function () {
     try {
       const bucketId = await pg.getBucketId(bucketUrl);
 
       if (!bucketId) {
-        return res.status(404).send('Bucket Url not found')
+        res.status(404).send('Bucket URL not found')
       } else {
 
         const bucketRequests = await pg.loadRequests(bucketUrl)
@@ -104,19 +93,24 @@ app.all(`/:bucketUrl`, (req, res) => {
         if (countRequests >= MAX_REQUESTS_PER_BIN) {
           bucketRequests.sort(sortRequests)
           const oldestId = bucketRequests[0]['id']
-
           await pg.deleteRequest(oldestId);
         }
 
         // Write to MongoDB & Postgres
         const requestObj = new Request({
-          headers: header,
+          headers: headers,
           payload: body,
-          requestType: requestType
+          requestType: method
         })
         
         const savedRequest = await requestObj.save()
-        await pg.createRequest(bucketId, requestType, savedRequest._id)
+        await pg.createRequest(bucketId, method, savedRequest._id)
+
+        // Send new request data to connected sockets
+        req.io.emit("NEW_REQUEST_IN_BUCKET", {
+          bucketUrl: bucketUrl,
+          data: savedRequest
+        })
       
         res.send('200')
       }
@@ -137,7 +131,7 @@ app.get('/stash/:bucketUrl', (req, res) => {
       const bucketId = await pg.getBucketId(bucketUrl);
 
       if (!bucketId) {
-        return res.status(404).send('Bucket Url not found')
+        res.status(404).send('Bucket Url not found')
       } else {
 
         const bucketRequests = await pg.loadRequests(bucketUrl)
@@ -162,25 +156,10 @@ app.get('/stash/:bucketUrl', (req, res) => {
 })
 
 // app.get('*', (req, res) => {
-//   // res.sendFile(path.join(__dirname+'/build/index.html'))
-
+//   res.sendFile(path.join(__dirname+'/build/index.html'))
 // })
 
-
-// app.listen(PORT, () => {
-//   console.log(`Express is running on port ${PORT}`)
-// })
-
-// must use server instead of express
+// Must use http server instead of express server
 httpServer.listen(PORT, () => {
   console.log(`httpServer is running on port ${PORT}`)
 })
-
-// - View Created page
-// app.get('/create/:bucketUrl', (req, res) => {
-//   // displays page with new bin url
-//   let host = req.get('host');
-//   let url = `${host}/${req.params.bucketUrl}`;
-//   // button to view bin history
-//   res.send(url);
-// })
