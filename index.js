@@ -26,7 +26,7 @@ const io = new Server(httpServer, {
 
 // MIDDLEWARE
 app.use(cors());
-// app.use(express.static(path.join(__dirname, 'build')));
+app.use(express.static(path.join(__dirname, 'build')));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(morgan('dev'))
@@ -49,12 +49,12 @@ mongoose.connect(process.env.MONGODB_URI)
 io.on('connection', (socket) => {
   // initial connections always HTTP polling
   // upgraded to websocket protocol if handshake successful
-  console.log(`--------user connected: ${socket.id} via: ${socket.conn.transport.name}`); 
+  console.log(`--user connected: ${socket.id} via: ${socket.conn.transport.name}`); 
 });
 
 // - Home page
 app.get('/', (req, res) => {
-  // res.sendFile(path.join(__dirname+'/static/home.html'));
+  res.sendFile(path.join(__dirname+'/static/home.html'));
   res.status(200)
 
 })
@@ -145,7 +145,7 @@ app.get('/stash/:bucketUrl', (req, res) => {
           '_id': {$in: mongoIds}
         });
 
-        return res.json(data)
+        return res.json(data.reverse())
       }
 
     } catch (error) {
@@ -155,9 +155,9 @@ app.get('/stash/:bucketUrl', (req, res) => {
   
 })
 
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(__dirname+'/build/index.html'))
-// })
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname+'/build/index.html'))
+})
 
 // Must use http server instead of express server
 httpServer.listen(PORT, () => {
