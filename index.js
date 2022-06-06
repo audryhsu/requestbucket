@@ -7,18 +7,28 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const morgan = require('morgan');
 const PgSidekick = require("./utils/pg-sidekick")
+const pg = new PgSidekick()
 const { urlGenerator } = require("./services/url-generator");
 const { sortRequests } =  require("./services/sortFunction");
-
-const pg = new PgSidekick()
 const Request = require('./models/request')
-
 const MAX_REQUESTS_PER_BIN = 20
 
+// IMPORT SOCKET IO
+const { createServer } = require("http");
+const httpServer = createServer(app)
+const { Server } = require("socket.io");
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ["GET", "POST"]
+  }
+});
+
+// MIDDLEWARE
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'build')));
+// app.use(express.static(path.join(__dirname, 'build')));
 app.use(express.json())
-app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: true }))
 app.use(morgan('dev'))
 
 mongoose.connect(process.env.MONGODB_URI)
@@ -29,9 +39,30 @@ mongoose.connect(process.env.MONGODB_URI)
         console.error('error connecting to MongoDB:', error.message);
     });
 
+// Websocket server listens for connection event for incoming sockets 
+io.on('connection', (socket) => {
+  const transport = socket.conn.transport.name; // in most cases, "polling"
+  console.log('initial transport: ', transport)
+  socket.conn.on("upgrade", () => {
+    const upgradedTransport = socket.conn.transport.name; // in most cases, "websocket"
+    console.log('------UPGRADED transport------', upgradedTransport)
+  });
+
+  console.log(`--------user connected: ${socket.id}`);
+
+  socket.on('send_message', (data) => {
+    console.log('got a message!')
+    socket.broadcast.emit("receive_message", data)
+  })
+
+});
+
 // - Home page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname+'/static/home.html'));
+  // res.sendFile(path.join(__dirname+'/static/home.html'));
+  
+  res.json({'body': 'helloworld'}) // TESTING ONLY
+
 })
 
 app.post('/create', (req, res) => {
@@ -50,14 +81,6 @@ app.post('/create', (req, res) => {
   }
 })
 
-// - View Created page
-// app.get('/create/:bucketUrl', (req, res) => {
-//   // displays page with new bin url
-//   let host = req.get('host');
-//   let url = `${host}/${req.params.bucketUrl}`;
-//   // button to view bin history
-//   res.send(url);
-// })
 
 // - Bucket "page" that collects all incoming
 app.all(`/:bucketUrl`, (req, res) => {
@@ -138,12 +161,26 @@ app.get('/stash/:bucketUrl', (req, res) => {
   
 })
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname+'/build/index.html'))
-})
-// app.get('/:bucketUrl', (req, res) => {
-//   // display ok/bucket history
+// app.get('*', (req, res) => {
+//   // res.sendFile(path.join(__dirname+'/build/index.html'))
+
 // })
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+
+
+// app.listen(PORT, () => {
+//   console.log(`Express is running on port ${PORT}`)
+// })
+
+// must use server instead of express
+httpServer.listen(PORT, () => {
+  console.log(`httpServer is running on port ${PORT}`)
 })
+
+// - View Created page
+// app.get('/create/:bucketUrl', (req, res) => {
+//   // displays page with new bin url
+//   let host = req.get('host');
+//   let url = `${host}/${req.params.bucketUrl}`;
+//   // button to view bin history
+//   res.send(url);
+// })
