@@ -8,7 +8,7 @@ const requestSchema = new mongoose.Schema({
   payload: {
     type: Object,
   },
-  rawbody: {
+  requestType: {
     type: String,
   }
 })

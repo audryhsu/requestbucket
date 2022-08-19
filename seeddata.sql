@@ -6,7 +6,7 @@ INSERT INTO buckets (url) VALUES
 ;
 
 INSERT INTO requests (bucket_id, request_type, mongo_document_ref) VALUES
-  (1, 'GET', 'abcd'),
-  (2, 'POST', 'xyz'),
-  (3, 'PUT', 'defgh')
+  (4, 'GET', 'abcd'),
+  (5, 'POST', 'xyz'),
+  (6, 'PUT', 'defgh')
 ;

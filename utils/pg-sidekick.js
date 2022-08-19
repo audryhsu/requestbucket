@@ -2,7 +2,6 @@ const { dbQuery } = require("./db-query");
 // PgSidekick class defines methods for making asynchronous PostgreSQL queries
 
 module.exports = class PgSidekick {
-  // TODO: define sql queries for postgres
   async loadBuckets() {
     const LOAD_BINS = 'SELECT * FROM buckets'
     let buckets = await dbQuery(LOAD_BINS)
@@ -28,6 +27,9 @@ module.exports = class PgSidekick {
     const LOAD_BUCKET = `SELECT id FROM buckets WHERE url='${bucketUrl}'`
 
     let bucket = await dbQuery(LOAD_BUCKET)
+    if (bucket.rows.length == 0) {
+      return false
+    }
     return bucket.rows[0].id;
   }
   
@@ -36,5 +38,14 @@ module.exports = class PgSidekick {
 
     let newRequest = await dbQuery(INSERT_REQUEST)
     return newRequest
+  }
+
+  async deleteRequest(requestId) {
+    const DELETE_REQUEST = `DELETE FROM requests WHERE id=('${requestId}')`
+
+    const deletedRequest = await dbQuery(DELETE_REQUEST)
+    console.log(deletedRequest)
+
+    return
   }
 }
